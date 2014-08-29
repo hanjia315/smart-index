@@ -1,0 +1,9 @@
+{
+  "name": "smart-index",
+  "version": "1.0.0",
+  "author": "izgzhen",
+  "license": "MIT",
+  "dependencies": {
+    "level": "^0.18.0"
+  }
+}
