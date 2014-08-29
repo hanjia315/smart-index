@@ -2,6 +2,7 @@
 var http = require('http');
 var level = require('level');
 var db = level('./data');
+var getMeta = require('./getMeta.js')
 
 extractor(2007);
 
@@ -31,7 +32,7 @@ function extractor(year) {
 		var raw = "";
 	    res.on('data', function (chunk) { raw += chunk });
 	    res.on("end", function() { 
-	    	var items = getProcess(year)(raw);
+	    	var items = process(year, raw);
     		pushData(items, year);
 	    }).on("error", function() {
 			throw error;
@@ -48,66 +49,30 @@ function getURL(year){
 		return "http://igem.org/Team_List?year=" + year
 }
 
-function getProcess(year){
-	if (year == 2006){
-		return function(raw){
-			raw = raw.toString();
-			var start = raw.indexOf("<table");
-			var end = raw.indexOf("</table>");
-			raw = raw.slice(start, end);
+function process(year, raw){
+		var meta = getMeta(year);
 
-			var arr = raw.match(/<a href=".+?" title=".+?">.+?<\/a>/g).filter(function(item){return (item.match(/(gif|jpg)/g) == null) && (item.match(/nbsp/g) == null)});
-			var items = arr.map(function(item){
-				var link = item.match(/href=".+?"/)[0].slice(6, -1);
-				var team = item.match(/">.+?</)[0].slice(2, -1);
-				var prefix = "http://2006.igem.org/"
-				return {
-					link : prefix + link,
-					team : team
-				}
-			});
-			return items;
-		}
-	}
-
-	if (year == 2007){
-		return function(raw){
-			raw = raw.toString();
-			var start = raw.indexOf("<TABLE");
-			var end = raw.indexOf("</TABLE>");
-			raw = raw.slice(start, end);
-
-			var arr = raw.match(/<A.+/g)
-
-			var items = arr.map(function(item){
-				var link = item.match(/href='.+?'/)[0].slice(6, -1);
-				var team = item.match(/'>.+?</)[0].slice(2, -1);
-				return {
-					link : link,
-					team : team
-				}
-			});
-			return items;
-		}
-	}
-
-	if(year == 2008){
-		return function(raw){
-			raw = raw.toString();
-			var start = raw.indexOf("<!-- start content -->");
-			var end = raw.indexOf("<!-- end content -->");
-			raw = raw.slice(start, end);
+		raw = raw.toString();
+		var start = raw.indexOf(meta.start);
+		var end = raw.indexOf(meta.end);
+		raw = raw.slice(start, end);
+		
+		if(year >= 2008 && year <= 2014)
 			raw = raw.split('\n').join(' ');
-			var arr = raw.match(/<A.+?\/A>/g);
-			var items = arr.map(function(item){
-						var link = item.match(/href='.+?'/)[0].slice(6, -1);
-						var team = item.match(/'>.+?</)[0].slice(2, -1);
-						return {
-							link : link,
-							team : team
-						}
-					});
-			return items;
-		}
-	}
+
+		var arr = raw.match(meta.reg);
+		
+		if(year == 2006)
+			arr = arr.filter(function(item){return (item.match(/(gif|jpg)/g) == null) && (item.match(/nbsp/g) == null)});
+	
+		var items = arr.map(function(item){
+			var link = item.match(meta.linkReg)[0];
+			var team = item.match(meta.teamReg)[0];
+
+			return {
+				link : meta.prefix + link.slice(6, -1),
+				team : team.slice(2, -1)
+			}
+		});
+		return items;
 }
